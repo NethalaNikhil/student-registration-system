@@ -2,15 +2,25 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+// Define a type for the course type data
+interface CourseType {
+  id: number;
+  name: string;
+}
+
 export default function CourseTypes() {
-  const [courseTypes, setCourseTypes] = useState([]);
+  // Use the CourseType type for courseTypes state
+  const [courseTypes, setCourseTypes] = useState<CourseType[]>([]);
   const [newCourseType, setNewCourseType] = useState('');
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
 
   const fetchCourseTypes = async () => {
     const { data, error } = await supabase.from('course_types').select();
-    if (!error) setCourseTypes(data);
+    if (!error && data) {
+      // Ensure that the data is of type CourseType[]
+      setCourseTypes(data as CourseType[]);
+    }
   };
 
   useEffect(() => {
@@ -31,7 +41,7 @@ export default function CourseTypes() {
     fetchCourseTypes();
   };
 
-  const handleEdit = (type) => {
+  const handleEdit = (type: CourseType) => {
     setEditingId(type.id);
     setEditValue(type.name);
   };
@@ -45,7 +55,7 @@ export default function CourseTypes() {
   };
 
   return (
-    <div className="p-4  border rounded">
+    <div className="p-4 border rounded">
       <h2 className="text-xl font-bold mb-4">Course Types</h2>
       <div className="mb-4">
         <input

@@ -2,19 +2,23 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 
+// Define types for data structures
 interface Offering {
   id: number
   course_id: number
   course_type_id: number
 }
+
 interface Course {
   id: number
   name: string
 }
+
 interface CourseType {
   id: number
   name: string
 }
+
 interface Registration {
   id: number
   student: string
@@ -46,7 +50,7 @@ export default function StudentRegistrations() {
       }
 
       // Map offering to match our local interface
-      const mappedOfferings: Offering[] = o?.map((offering: any) => ({
+      const mappedOfferings: Offering[] = o?.map((offering) => ({
         id: offering.id,
         course_id: offering.course, // DB column: course
         course_type_id: offering.course_type, // DB column: course_type
