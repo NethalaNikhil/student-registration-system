@@ -114,7 +114,7 @@ export default function CourseOfferings() {
         {offerings.map(o => (
           <div
             key={o.id}
-            className="flex justify-between items-center p-2 border rounded"
+            className="flex justify-between items-center p-2  rounded"
           >
             <span>
               {getLabel(o.course_type, courseTypes)} -{' '}

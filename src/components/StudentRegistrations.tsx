@@ -32,6 +32,7 @@ export default function StudentRegistrations() {
   const [registrations, setRegistrations] = useState<Registration[]>([])
   const [studentName, setStudentName] = useState('')
   const [selectedOffering, setSelectedOffering] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -49,11 +50,10 @@ export default function StudentRegistrations() {
         return
       }
 
-      // Map offering to match our local interface
       const mappedOfferings: Offering[] = o?.map((offering) => ({
         id: offering.id,
-        course_id: offering.course, // DB column: course
-        course_type_id: offering.course_type, // DB column: course_type
+        course_id: offering.course,
+        course_type_id: offering.course_type,
       })) || []
 
       setOfferings(mappedOfferings)
@@ -71,22 +71,65 @@ export default function StudentRegistrations() {
       return
     }
 
+    if (editingId) {
+      // If editing, update instead of insert
+      const { error } = await supabase
+        .from('registrations')
+        .update({
+          student: studentName,
+          offering_id: selectedOffering,
+        })
+        .eq('id', editingId)
+
+      if (error) {
+        console.error('Error updating student:', error.message)
+      } else {
+        resetForm()
+        fetchData()
+      }
+    } else {
+      // Else, insert new registration
+      const { error } = await supabase
+        .from('registrations')
+        .insert([
+          {
+            student: studentName,
+            offering_id: selectedOffering,
+          },
+        ])
+
+      if (error) {
+        console.error('Error registering student:', error.message)
+      } else {
+        resetForm()
+        fetchData()
+      }
+    }
+  }
+
+  const editRegistration = (registration: Registration) => {
+    setEditingId(registration.id)
+    setStudentName(registration.student)
+    setSelectedOffering(registration.offering_id)
+  }
+
+  const deleteRegistration = async (id: number) => {
     const { error } = await supabase
       .from('registrations')
-      .insert([
-        {
-          student: studentName, // Changed from 'student_name' to 'student'
-          offering_id: selectedOffering,
-        },
-      ])
+      .delete()
+      .eq('id', id)
 
     if (error) {
-      console.error('Error registering student:', error.message)
+      console.error('Error deleting registration:', error.message)
     } else {
-      setStudentName('')
-      setSelectedOffering(null)
       fetchData()
     }
+  }
+
+  const resetForm = () => {
+    setStudentName('')
+    setSelectedOffering(null)
+    setEditingId(null)
   }
 
   const getOfferingLabel = (offeringId: number) => {
@@ -126,17 +169,41 @@ export default function StudentRegistrations() {
             ))
           )}
         </select>
-        <button onClick={registerStudent} className="bg-green-600 text-white px-4 py-2 rounded">
-          Register
+        <button
+          onClick={registerStudent}
+          className={`px-4 py-2 rounded ${editingId ? 'bg-blue-600' : 'bg-green-600'} text-white`}
+        >
+          {editingId ? 'Update' : 'Register'}
         </button>
+        {editingId && (
+          <button onClick={resetForm} className="bg-gray-500 text-white px-4 py-2 rounded">
+            Cancel
+          </button>
+        )}
       </div>
 
       <div>
         <h3 className="font-semibold mb-2">Registered Students</h3>
-        <ul>
+        <ul className="space-y-2">
           {registrations.map((r) => (
-            <li key={r.id}>
-              {r.student} — {getOfferingLabel(r.offering_id)}
+            <li key={r.id} className="flex items-center justify-between  p-2 rounded">
+              <div>
+                {r.student} — {getOfferingLabel(r.offering_id)}
+              </div>
+              <div className="space-x-2">
+                <button
+                  onClick={() => editRegistration(r)}
+                  className="bg-blue-500 text-white px-2 py-1 rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteRegistration(r.id)}
+                  className="bg-red-500 text-white px-2 py-1 rounded"
+                >
+                  Delete
+                </button>
+              </div>
             </li>
           ))}
         </ul>
