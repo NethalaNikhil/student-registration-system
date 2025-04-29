@@ -36,6 +36,26 @@ export default function StudentRegistrations() {
 
   useEffect(() => {
     fetchData()
+    fetchRegistrations()
+
+    const channel = supabase
+      .channel('offerings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'offerings',
+        },
+        () => {
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const fetchData = async () => {
@@ -43,10 +63,9 @@ export default function StudentRegistrations() {
       const { data: o, error: oError } = await supabase.from('offerings').select('*')
       const { data: c, error: cError } = await supabase.from('courses').select('*')
       const { data: t, error: tError } = await supabase.from('course_types').select('*')
-      const { data: r, error: rError } = await supabase.from('registrations').select('*')
 
-      if (oError || cError || tError || rError) {
-        console.error('Error fetching data:', oError || cError || tError || rError)
+      if (oError || cError || tError) {
+        console.error('Error fetching data:', oError || cError || tError)
         return
       }
 
@@ -59,9 +78,21 @@ export default function StudentRegistrations() {
       setOfferings(mappedOfferings)
       if (c) setCourses(c)
       if (t) setCourseTypes(t)
-      if (r) setRegistrations(r)
     } catch (error) {
       console.error('Error fetching data:', error)
+    }
+  }
+
+  const fetchRegistrations = async () => {
+    try {
+      const { data: r, error: rError } = await supabase.from('registrations').select('*')
+      if (rError) {
+        console.error('Error fetching registrations:', rError)
+      } else {
+        setRegistrations(r || [])
+      }
+    } catch (error) {
+      console.error('Error fetching registrations:', error)
     }
   }
 
@@ -72,7 +103,7 @@ export default function StudentRegistrations() {
     }
 
     if (editingId) {
-      // If editing, update instead of insert
+      // Update existing registration
       const { error } = await supabase
         .from('registrations')
         .update({
@@ -85,10 +116,10 @@ export default function StudentRegistrations() {
         console.error('Error updating student:', error.message)
       } else {
         resetForm()
-        fetchData()
+        fetchRegistrations()
       }
     } else {
-      // Else, insert new registration
+      // Insert new registration
       const { error } = await supabase
         .from('registrations')
         .insert([
@@ -102,7 +133,7 @@ export default function StudentRegistrations() {
         console.error('Error registering student:', error.message)
       } else {
         resetForm()
-        fetchData()
+        fetchRegistrations()
       }
     }
   }
@@ -122,7 +153,7 @@ export default function StudentRegistrations() {
     if (error) {
       console.error('Error deleting registration:', error.message)
     } else {
-      fetchData()
+      fetchRegistrations()
     }
   }
 
@@ -145,7 +176,7 @@ export default function StudentRegistrations() {
   return (
     <div className="p-4 border rounded">
       <h2 className="text-xl font-bold mb-4">Student Registration</h2>
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         <input
           type="text"
           placeholder="Student Name"
@@ -186,7 +217,7 @@ export default function StudentRegistrations() {
         <h3 className="font-semibold mb-2">Registered Students</h3>
         <ul className="space-y-2">
           {registrations.map((r) => (
-            <li key={r.id} className="flex items-center justify-between  p-2 rounded">
+            <li key={r.id} className="flex items-center justify-between p-2 border rounded">
               <div>
                 {r.student} — {getOfferingLabel(r.offering_id)}
               </div>
